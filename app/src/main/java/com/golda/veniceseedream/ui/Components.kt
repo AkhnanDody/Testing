@@ -84,3 +84,24 @@ fun LocalPngImage(
         )
     }
 }
+
+/** Tampilkan bytes gambar (misal hasil kompresi referensi) sebagai gambar Compose. */
+@Composable
+fun ByteArrayImage(
+    bytes: ByteArray,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Crop
+) {
+    val bitmap = remember(bytes.size, bytes.contentHashCode()) {
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = contentScale
+        )
+    }
+}

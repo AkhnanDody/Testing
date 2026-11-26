@@ -13,9 +13,22 @@ data class GalleryItem(
     val resolution: String,
     val aspectRatio: String,
     val fileName: String,
-    val createdAt: Long
+    val createdAt: Long,
+    /** "text2image" atau "img2img" — item lama (sebelum ada field ini) dianggap text2image. */
+    val mode: String = MODE_TEXT2IMAGE
 ) {
     fun file(dir: File): File = File(dir, fileName)
+
+    val isImg2Img: Boolean get() = mode == MODE_IMG2IMG
+
+    /** Label info di kartu galeri: "1K • 1:1" atau "Img2Img • 1K". */
+    val infoText: String
+        get() = if (isImg2Img) "Img2Img • $resolution" else "$resolution • $aspectRatio"
+
+    companion object {
+        const val MODE_TEXT2IMAGE = "text2image"
+        const val MODE_IMG2IMG = "img2img"
+    }
 }
 
 /**
@@ -36,16 +49,19 @@ class GalleryStore(context: Context) {
         prompt: String,
         resolution: String,
         aspectRatio: String,
-        pngBytes: ByteArray
+        pngBytes: ByteArray,
+        mode: String = GalleryItem.MODE_TEXT2IMAGE
     ): GalleryItem = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
+        val prefix = if (mode == GalleryItem.MODE_IMG2IMG) "edit" else "seedream"
         val item = GalleryItem(
             id = now.toString(),
             prompt = prompt,
             resolution = resolution,
             aspectRatio = aspectRatio,
-            fileName = "seedream_$now.png",
-            createdAt = now
+            fileName = "${prefix}_$now.png",
+            createdAt = now,
+            mode = mode
         )
         File(galleryDir, item.fileName).writeBytes(pngBytes)
         val items = listOf(item) + readIndex()
@@ -79,7 +95,8 @@ class GalleryStore(context: Context) {
                             resolution = o.optString("resolution"),
                             aspectRatio = o.optString("aspectRatio"),
                             fileName = fileName,
-                            createdAt = o.optLong("createdAt")
+                            createdAt = o.optLong("createdAt"),
+                            mode = o.optString("mode").ifBlank { GalleryItem.MODE_TEXT2IMAGE }
                         )
                     )
                 }
@@ -100,6 +117,7 @@ class GalleryStore(context: Context) {
                     put("aspectRatio", item.aspectRatio)
                     put("fileName", item.fileName)
                     put("createdAt", item.createdAt)
+                    put("mode", item.mode)
                 }
             )
         }

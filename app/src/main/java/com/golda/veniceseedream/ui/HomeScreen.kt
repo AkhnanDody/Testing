@@ -1,6 +1,7 @@
 package com.golda.veniceseedream.ui
 
-import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,8 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,17 +28,15 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.golda.veniceseedream.data.Downloader
 import com.golda.veniceseedream.ui.theme.AccentYellow
 import com.golda.veniceseedream.ui.theme.DarkSurface
-import kotlinx.coroutines.launch
-import java.io.File
 
 @Composable
 fun HomeScreen(
@@ -46,8 +45,21 @@ fun HomeScreen(
     onOpenGallery: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val isImg2Img = viewModel.mode == GenerateMode.IMG2IMG
+
+    // Begitu generate berhasil, langsung pindah ke Galeri — hasilnya cuma tampil di sana.
+    LaunchedEffect(viewModel.navigateToGallery) {
+        if (viewModel.navigateToGallery) {
+            viewModel.consumeNavigateToGallery()
+            onOpenGallery()
+        }
+    }
+
+    val pickImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) viewModel.setReferenceImage(uri)
+    }
 
     Column(
         modifier = modifier
@@ -67,11 +79,103 @@ fun HomeScreen(
             }
         }
 
+        // Tab switch: Text2Image (tetap seperti dulu) / Img2Img
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            ModeTabButton(
+                text = "Text2Image",
+                selected = !isImg2Img,
+                onClick = { viewModel.setMode(GenerateMode.TEXT2IMAGE) },
+                modifier = Modifier.weight(1f)
+            )
+            ModeTabButton(
+                text = "Img2Img",
+                selected = isImg2Img,
+                onClick = { viewModel.setMode(GenerateMode.IMG2IMG) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (isImg2Img) {
+            val ref = viewModel.referenceImage
+            if (ref == null) {
+                OutlinedButton(
+                    onClick = { pickImage.launch("image/*") },
+                    enabled = !viewModel.isGenerating && !viewModel.isCompressing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                ) {
+                    if (viewModel.isCompressing) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.size(10.dp))
+                        Text("Mengompres gambar...")
+                    } else {
+                        Icon(Icons.Default.Image, contentDescription = null)
+                        Spacer(Modifier.size(8.dp))
+                        Text("Pilih Gambar Referensi")
+                    }
+                }
+                Text(
+                    text = "Gambar otomatis dikompresi (maks 1024px) sebelum dikirim ke Venice.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Card(colors = CardDefaults.cardColors(containerColor = DarkSurface)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ByteArrayImage(
+                            bytes = ref.jpegBytes,
+                            contentDescription = "Gambar referensi",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(ref.width.toFloat() / ref.height.toFloat()),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            text = "${ref.dimensionsText} • ${ref.sizeText}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { pickImage.launch("image/*") },
+                                enabled = !viewModel.isGenerating,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Ganti Gambar")
+                            }
+                            OutlinedButton(
+                                onClick = { viewModel.clearReferenceImage() },
+                                enabled = !viewModel.isGenerating,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                                Spacer(Modifier.size(6.dp))
+                                Text("Hapus", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         OutlinedTextField(
             value = viewModel.prompt,
             onValueChange = { viewModel.prompt = it },
             label = { Text("Prompt") },
-            placeholder = { Text("Contoh: a cute cat astronaut, cinematic lighting...") },
+            placeholder = {
+                Text(
+                    if (isImg2Img) "Contoh: ganti langit jadi sunset, hapus pohon itu..."
+                    else "Contoh: a cute cat astronaut, cinematic lighting..."
+                )
+            },
             minLines = 4,
             maxLines = 6,
             modifier = Modifier.fillMaxWidth()
@@ -84,29 +188,43 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (isImg2Img) {
+            // Edit ngikutin rasio gambar referensi, jadi cuma resolusi yang dipilih.
             LabeledDropdown(
                 label = "Resolusi",
-                options = Options.RESOLUTIONS,
-                selected = viewModel.resolution,
-                onSelected = { viewModel.resolution = it },
-                modifier = Modifier.weight(1f)
+                options = Options.EDIT_RESOLUTIONS,
+                selected = viewModel.editResolution,
+                onSelected = { viewModel.editResolution = it },
+                modifier = Modifier.fillMaxWidth()
             )
-            LabeledDropdown(
-                label = "Aspect Ratio",
-                options = Options.ASPECT_RATIOS,
-                selected = viewModel.aspectRatio,
-                onSelected = { viewModel.aspectRatio = it },
-                modifier = Modifier.weight(1f)
-            )
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LabeledDropdown(
+                    label = "Resolusi",
+                    options = Options.RESOLUTIONS,
+                    selected = viewModel.resolution,
+                    onSelected = { viewModel.resolution = it },
+                    modifier = Modifier.weight(1f)
+                )
+                LabeledDropdown(
+                    label = "Aspect Ratio",
+                    options = Options.ASPECT_RATIOS,
+                    selected = viewModel.aspectRatio,
+                    onSelected = { viewModel.aspectRatio = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
 
+        val canGenerate = !viewModel.isGenerating &&
+            viewModel.prompt.isNotBlank() &&
+            (!isImg2Img || viewModel.referenceImage != null)
         Button(
             onClick = { viewModel.generate() },
-            enabled = !viewModel.isGenerating && viewModel.prompt.isNotBlank(),
+            enabled = canGenerate,
             colors = ButtonDefaults.buttonColors(
                 containerColor = AccentYellow,
-                contentColor = androidx.compose.ui.graphics.Color.Black
+                contentColor = Color.Black
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -114,14 +232,14 @@ fun HomeScreen(
         ) {
             if (viewModel.isGenerating) {
                 CircularProgressIndicator(
-                    color = androidx.compose.ui.graphics.Color.Black,
+                    color = Color.Black,
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp
                 )
                 Spacer(Modifier.size(10.dp))
                 Text("Generating... ${viewModel.elapsedSeconds}s")
             } else {
-                Text("Generate")
+                Text(if (isImg2Img) "Edit Gambar" else "Generate")
             }
         }
 
@@ -133,65 +251,35 @@ fun HomeScreen(
             )
         }
 
-        val latest = viewModel.latestItem
-        if (latest != null) {
-            Text("Hasil terbaru", style = MaterialTheme.typography.titleMedium)
-            Card(colors = CardDefaults.cardColors(containerColor = DarkSurface)) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LocalPngImage(
-                        file = File(viewModel.galleryDir, latest.fileName),
-                        contentDescription = latest.prompt,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f),
-                        contentScale = ContentScale.Fit
-                    )
-                    Text(latest.prompt, style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        text = "${latest.resolution} • ${latest.aspectRatio}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = {
-                                scope.launch {
-                                    val ok = Downloader.saveToDownloads(
-                                        context,
-                                        File(viewModel.galleryDir, latest.fileName),
-                                        latest.fileName
-                                    )
-                                    Toast.makeText(
-                                        context,
-                                        if (ok) "Tersimpan di Download/VeniceSeedream"
-                                        else "Gagal menyimpan gambar",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null)
-                            Spacer(Modifier.size(6.dp))
-                            Text("Download")
-                        }
-                        OutlinedButton(
-                            onClick = { viewModel.usePrompt(latest.prompt) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(Modifier.size(6.dp))
-                            Text("Pakai Lagi")
-                        }
-                    }
-                    OutlinedButton(
-                        onClick = onOpenGallery,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Lihat di Galeri")
-                    }
-                }
-            }
+        // Beranda sengaja dibiarkan kosong di bawah tombol Generate —
+        // hasil generate langsung tampil di Galeri, biar nggak dobel.
+    }
+}
+
+@Composable
+private fun ModeTabButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AccentYellow,
+                contentColor = Color.Black
+            ),
+            modifier = modifier.height(48.dp)
+        ) {
+            Text(text)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier.height(48.dp)
+        ) {
+            Text(text)
         }
     }
 }

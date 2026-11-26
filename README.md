@@ -13,13 +13,13 @@ Aplikasi Android untuk generate gambar pakai Venice Seedream, langsung nyambung 
    - Tombol **Simpan** dan **Hapus Key**
    - Key disimpan lokal di HP pakai DataStore, tidak di-hardcode di kode
 2. **Layar utama (Beranda)**:
-   - Kotak input prompt + hitungan karakter
-   - Pemilihan **Resolusi** (1K, 1.5K, 2K) model dropdown tutup-buka/gulung
-   - Pemilihan **Aspect Ratio** (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, 21:9) model dropdown juga
-   - Tombol **Generate** besar — pas lagi proses tampil timer detiknya
-   - Hasil terbaru tampil di bawahnya, ada tombol **Download** dan **Pakai Prompt Lagi**
+   - Tab switch di atas kotak prompt: **Text2Image** (tetap seperti dulu) dan **Img2Img**
+   - **Text2Image**: kotak input prompt + hitungan karakter, Resolusi (1K, 1.5K, 2K), Aspect Ratio, tombol **Generate**
+   - **Img2Img**: pilih gambar referensi dari galeri HP — tampil preview lengkap dengan info ukuran, tombol **Ganti Gambar** dan **Hapus**. Gambar otomatis dikompresi di HP (sisi terpanjang maks 1024px, JPEG kualitas 85) sebelum dikirim. Prompt-nya berisi instruksi edit, contoh: "ganti langit jadi sunset". Tombol **Edit Gambar**, resolusi edit 1K/2K (rasio ngikutin gambar referensi)
+   - Begitu generate/edit berhasil, kotak prompt langsung kosong (prompt-nya sudah ikut tersimpan di Galeri) dan aplikasi langsung pindah ke tab **Galeri** — Beranda sengaja dibiarkan kosong di bawah tombol, biar hasilnya nggak tampil dobel
+   - Pas lagi proses, tombol menampilkan timer detiknya
 3. **Navbar bawah: Beranda | Galeri**:
-   - Galeri grid 2 kolom, tiap kartu ada gambar + prompt + info resolusi/ratio
+   - Galeri grid 2 kolom, tiap kartu ada gambar + prompt + info (Text2Image: resolusi • ratio, Img2Img: "Img2Img • resolusi")
    - Klik kartu buat lihat besar: ada Download, Pakai Prompt Lagi, dan Hapus
    - Ada tombol Hapus Semua di atas galeri
    - Galeri disimpan lokal di HP, jadi tetap ada setelah aplikasi ditutup
@@ -59,7 +59,9 @@ Proyek ini sudah termasuk file workflow di `.github/workflows/build-apk.yml`, ja
 
 Catatan: workflow ini pakai `gradle assembleDebug` langsung (bukan `./gradlew`, karena file `gradlew` tidak ikut di ZIP ini), dengan Java 17 dan Gradle 8.7 — sama seperti versi proyek ini (AGP 8.5.2). API key tidak ada di kode, jadi aman di-push; key-nya diisi sendiri di dalam aplikasi setelah APK ter-install.
 
-## Cara kerja ke Venice (sama persis kayak server.py)
+## Cara kerja ke Venice
+
+**Text2Image** (sama persis kayak server.py):
 
 ```
 POST https://api.venice.ai/api/v1/image/generate
@@ -78,23 +80,41 @@ Body JSON:
 Response dibaca kayak di `server.py`: ambil `images[0]` (strip awalan data-URI kalau ada), fallback ke `data[0].b64_json`, lalu decode base64 jadi PNG.
 Error 402 ditampilkan sebagai pesan saldo credits habis.
 
+**Img2Img** (edit gambar, endpoint terpisah):
+
+```
+POST https://api.venice.ai/api/v1/image/edit
+Header: Authorization: Bearer <API key kamu>
+Body JSON:
+{
+  "model": "firered-image-edit",
+  "image": "<base64 gambar referensi, sudah dikompresi maks 1024px>",
+  "prompt": "ganti langit jadi sunset",
+  "resolution": "1K",
+  "safe_mode": false
+}
+```
+
+Bedanya: response `/image/edit` adalah **gambar mentah (binary)**, bukan JSON base64 — jadi langsung dibaca bytes-nya. Harga edit $0,04 per edit (generate ~$0,03/gambar 1K, harga bisa berubah, cek venice.ai). Error 422 berarti Venice nolak gambar/prompt-nya.
+
 ## Struktur proyek (singkat)
 
 ```
 app/src/main/java/com/golda/veniceseedream/
 ├── MainActivity.kt          # Rangka aplikasi: TopBar + hamburger, drawer, navbar bawah
 ├── data/
-│   ├── VeniceApi.kt         # Panggilan langsung ke Venice API (OkHttp + org.json)
+│   ├── VeniceApi.kt         # Panggilan langsung ke Venice API (OkHttp + org.json): generate + edit
+│   ├── ImageCompressor.kt   # Kompresi gambar referensi maks 1024px (JPEG 85) + base64
 │   ├── SettingsStore.kt     # Simpan API key (DataStore Preferences)
 │   ├── GalleryStore.kt      # Galeri lokal: PNG + index.json di filesDir/gallery/
 │   └── Downloader.kt        # Simpan ke Download/VeniceSeedream (MediaStore)
 └── ui/
-    ├── MainViewModel.kt     # State & logika generate, timer, galeri
-    ├── HomeScreen.kt        # Prompt, dropdown, tombol Generate, hasil terbaru
+    ├── MainViewModel.kt     # State & logika generate/edit, timer, galeri
+    ├── HomeScreen.kt        # Tab Text2Image/Img2Img, prompt, picker referensi, tombol Generate
     ├── GalleryScreen.kt     # Grid galeri + dialog detail
     ├── SettingsDrawer.kt    # Isi drawer Pengaturan API key
     ├── Components.kt        # Dropdown tutup-buka & penampil gambar lokal
-    ├── Options.kt           # Daftar resolusi & aspect ratio
+    ├── Options.kt           # Daftar resolusi & aspect ratio (+ resolusi edit)
     └── theme/Theme.kt       # Tema dark mode + aksen kuning
 ```
 

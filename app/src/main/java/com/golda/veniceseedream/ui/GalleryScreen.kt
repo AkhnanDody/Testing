@@ -155,7 +155,7 @@ private fun GalleryCard(item: GalleryItem, file: File, onClick: () -> Unit) {
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    "${item.resolution} • ${item.aspectRatio}",
+                    item.infoText,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -194,7 +194,7 @@ private fun GalleryDetailDialog(
                 )
                 Text(item.prompt, style = MaterialTheme.typography.bodyMedium)
                 Text(
-                    "${item.resolution} • ${item.aspectRatio} • $dateText",
+                    "${item.infoText} • $dateText",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -69,23 +69,7 @@ object VeniceApi {
         response.use { resp ->
             val text = resp.body?.string().orEmpty()
             if (!resp.isSuccessful) {
-                var err = text
-                try {
-                    val json = JSONObject(text)
-                    err = json.optString("error", text)
-                    // Kadang error berupa objek
-                    if (err.isBlank() || err == text) {
-                        val errObj = json.optJSONObject("error")
-                        if (errObj != null) err = errObj.optString("message", text)
-                    }
-                } catch (_: Exception) { /* pakai teks mentah */ }
-                if (resp.code == 402) {
-                    err = "Saldo credits abis! Top up dulu di venice.ai/settings/api"
-                }
-                if (resp.code == 401 || resp.code == 403) {
-                    err = "API key ditolak Venice ($err). Cek lagi key-nya di Pengaturan."
-                }
-                throw VeniceException(err.ifBlank { "Venice balas error ${resp.code}" })
+                throw VeniceException(parseErrorBody(resp.code, text))
             }
 
             val data = try {
@@ -103,6 +87,94 @@ object VeniceApi {
                 throw VeniceException("Data gambar dari Venice rusak: ${e.message}")
             }
         }
+    }
+
+    /**
+     * Image-to-image (edit): POST /image/edit
+     * Model default firered-image-edit ($0,04/edit).
+     * Gambar dikirim sebagai base64 (sudah dikompresi maks 1024px di client).
+     * Beda dari /image/generate: responsnya GAMBAR MENTAH (binary),
+     * bukan JSON base64 — jadi langsung baca bytes-nya.
+     * resolution cuma 1K/2K/4K; aspect ratio ngikutin gambar sumber.
+     */
+    suspend fun editImage(
+        apiKey: String,
+        prompt: String,
+        imageBase64: String,
+        resolution: String
+    ): ByteArray = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) {
+            throw VeniceException("API key belum diisi. Buka menu hamburger > Pengaturan, lalu isi API key Venice kamu.")
+        }
+        if (prompt.isBlank()) {
+            throw VeniceException("Prompt-nya kosong, isi dulu! Contoh: ganti langit jadi sunset.")
+        }
+        if (imageBase64.isBlank()) {
+            throw VeniceException("Gambar referensi belum dipilih.")
+        }
+
+        val payload = JSONObject().apply {
+            put("model", "firered-image-edit")
+            put("image", imageBase64)
+            put("prompt", prompt)
+            put("resolution", resolution)
+            put("safe_mode", false)
+        }
+
+        val request = Request.Builder()
+            .url("$BASE_URL/image/edit")
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+            .post(payload.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+
+        val response = try {
+            client.newCall(request).execute()
+        } catch (e: IOException) {
+            throw VeniceException("Gagal nyambung ke Venice: ${e.message}")
+        }
+
+        response.use { resp ->
+            if (!resp.isSuccessful) {
+                throw VeniceException(parseError(resp))
+            }
+            resp.body?.bytes()
+                ?.takeIf { it.isNotEmpty() }
+                ?: throw VeniceException("Venice nggak ngembaliin gambar")
+        }
+    }
+
+    /** Baca pesan error dari body JSON; kalau bukan JSON, pakai teks mentah. */
+    private fun parseError(resp: okhttp3.Response): String {
+        val text = try {
+            resp.body?.string().orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+        return parseErrorBody(resp.code, text)
+    }
+
+    private fun parseErrorBody(code: Int, text: String): String {
+        var err = text
+        try {
+            val json = JSONObject(text)
+            err = json.optString("error", text)
+            // Kadang error berupa objek
+            if (err.isBlank() || err == text) {
+                val errObj = json.optJSONObject("error")
+                if (errObj != null) err = errObj.optString("message", text)
+            }
+        } catch (_: Exception) { /* pakai teks mentah */ }
+        if (code == 402) {
+            err = "Saldo credits abis! Top up dulu di venice.ai/settings/api"
+        }
+        if (code == 401 || code == 403) {
+            err = "API key ditolak Venice ($err). Cek lagi key-nya di Pengaturan."
+        }
+        if (code == 422) {
+            err = "Venice nolak gambar/prompt ini ($err). Coba kecilin gambarnya atau ubah prompt."
+        }
+        return err.ifBlank { "Venice balas error $code" }
     }
 
     /** Sama kayak server.py: utamakan "images"[0], fallback "data"[0].b64_json */
