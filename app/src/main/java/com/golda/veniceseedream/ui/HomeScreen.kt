@@ -84,13 +84,13 @@ fun HomeScreen(
             ModeTabButton(
                 text = "Text2Image",
                 selected = !isImg2Img,
-                onClick = { viewModel.setMode(GenerateMode.TEXT2IMAGE) },
+                onClick = { viewModel.selectMode(GenerateMode.TEXT2IMAGE) },
                 modifier = Modifier.weight(1f)
             )
             ModeTabButton(
                 text = "Img2Img",
                 selected = isImg2Img,
-                onClick = { viewModel.setMode(GenerateMode.IMG2IMG) },
+                onClick = { viewModel.selectMode(GenerateMode.IMG2IMG) },
                 modifier = Modifier.weight(1f)
             )
         }

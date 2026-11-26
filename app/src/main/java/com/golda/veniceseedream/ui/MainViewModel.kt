@@ -80,7 +80,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prompt = text
     }
 
-    fun setMode(newMode: GenerateMode) {
+    /** Ganti mode Text2Image/Img2Img. Namanya selectMode (bukan setMode) karena
+     *  properti `mode` di atas sudah otomatis punya setter setMode() dari Kotlin —
+     *  kalau namanya sama, compiler protes "platform declaration clash". */
+    fun selectMode(newMode: GenerateMode) {
         mode = newMode
         errorMessage = null
     }
