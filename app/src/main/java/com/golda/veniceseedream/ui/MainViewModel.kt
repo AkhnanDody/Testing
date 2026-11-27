@@ -39,6 +39,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var prompt by mutableStateOf("")
     var resolution by mutableStateOf(Options.RESOLUTIONS.first())
     var aspectRatio by mutableStateOf(Options.ASPECT_RATIOS.first())
+    /** Rasio & resolusi khusus img2img — dikirim ke /image/edit. */
+    var editResolution by mutableStateOf(Options.EDIT_RESOLUTIONS.first())
+    var editAspectRatio by mutableStateOf(Options.ASPECT_RATIOS.first())
 
     /** Gambar referensi img2img, sudah dikompresi (maks 1024px) di client. */
     var referenceImage by mutableStateOf<ImageCompressor.CompressedImage?>(null)
@@ -93,7 +96,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         errorMessage = null
         viewModelScope.launch {
             try {
-                referenceImage = ImageCompressor.compress(app, uri)
+                val compressed = ImageCompressor.compress(app, uri)
+                referenceImage = compressed
+                // Rasio default ngikutin gambar referensi — kalau mau diubah,
+                // tinggal pilih di dropdown Aspect Ratio.
+                editAspectRatio = Options.closestAspectRatio(compressed.width, compressed.height)
             } catch (e: ImageCompressor.CompressException) {
                 errorMessage = e.message
             } catch (e: Exception) {
@@ -146,12 +153,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val bytes = VeniceApi.editImage(
                         apiKey = apiKey.value,
                         prompt = currentPrompt,
-                        imageBase64 = referenceImage!!.base64
+                        imageBase64 = referenceImage!!.base64,
+                        aspectRatio = editAspectRatio,
+                        resolution = editResolution
                     )
                     galleryStore.add(
                         prompt = currentPrompt,
-                        resolution = referenceImage!!.dimensionsText,
-                        aspectRatio = "",
+                        resolution = editResolution,
+                        aspectRatio = editAspectRatio,
                         pngBytes = bytes,
                         mode = GalleryItem.MODE_IMG2IMG
                     )

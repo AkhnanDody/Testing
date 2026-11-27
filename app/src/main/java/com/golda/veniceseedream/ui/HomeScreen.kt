@@ -189,12 +189,23 @@ fun HomeScreen(
         )
 
         if (isImg2Img) {
-            // Edit ngikutin ukuran & rasio gambar referensi — nggak ada yang dipilih.
-            Text(
-                text = "Ukuran hasil ngikutin gambar referensi.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // Rasio & resolusi bisa dipilih — hasil edit ngikutin pilihan ini.
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LabeledDropdown(
+                    label = "Resolusi",
+                    options = Options.EDIT_RESOLUTIONS,
+                    selected = viewModel.editResolution,
+                    onSelected = { viewModel.editResolution = it },
+                    modifier = Modifier.weight(1f)
+                )
+                LabeledDropdown(
+                    label = "Aspect Ratio",
+                    options = Options.EDIT_ASPECT_RATIOS,
+                    selected = viewModel.editAspectRatio,
+                    onSelected = { viewModel.editAspectRatio = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 LabeledDropdown(

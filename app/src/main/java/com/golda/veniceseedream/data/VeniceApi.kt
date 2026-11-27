@@ -97,15 +97,18 @@ object VeniceApi {
      * Gambar dikirim sebagai base64 (sudah dikompresi maks 1024px di client).
      * Beda dari /image/generate: responsnya GAMBAR MENTAH (binary),
      * bukan JSON base64 — jadi langsung baca bytes-nya.
-     * PENTING: jangan kirim `resolution`/`aspect_ratio` — model edit
-     * sebelumnya (firered-image-edit) langsung menolak resolution, dan
-     * belum terkonfirmasi apakah seedream-v5-5-edit menerimanya.
-     * Ukuran hasil ngikutin gambar referensi.
+     * Rasio & resolusi: endpoint /image/edit mencantumkan `aspect_ratio`
+     * dan `resolution` sebagai parameter, dan keluarga Seedream mendukung
+     * 8 rasio + tier 1K/1.5K/2K/4K — tapi dukungan per model belum
+     * terkonfirmasi (firered-image-edit dulu langsung menolak `resolution`).
+     * Kalau API menolak salah satunya, errornya nyebutin nama parameternya.
      */
     suspend fun editImage(
         apiKey: String,
         prompt: String,
-        imageBase64: String
+        imageBase64: String,
+        aspectRatio: String,
+        resolution: String
     ): ByteArray = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             throw VeniceException("API key belum diisi. Buka menu hamburger > Pengaturan, lalu isi API key Venice kamu.")
@@ -121,6 +124,8 @@ object VeniceApi {
             put("model", "seedream-v5-5-edit")
             put("image", imageBase64)
             put("prompt", prompt)
+            put("aspect_ratio", aspectRatio)
+            put("resolution", resolution)
             put("safe_mode", false)
         }
 

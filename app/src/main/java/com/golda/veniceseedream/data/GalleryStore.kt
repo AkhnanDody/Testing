@@ -21,9 +21,13 @@ data class GalleryItem(
 
     val isImg2Img: Boolean get() = mode == MODE_IMG2IMG
 
-    /** Label info di kartu galeri: "1K • 1:1" atau "Img2Img • 1K". */
+    /** Label info di kartu galeri: "1K • 1:1" atau "Img2Img • 1K • 9:16". */
     val infoText: String
-        get() = if (isImg2Img) "Img2Img • $resolution" else "$resolution • $aspectRatio"
+        get() = if (isImg2Img) {
+            "Img2Img • $resolution" + if (aspectRatio.isNotBlank()) " • $aspectRatio" else ""
+        } else {
+            "$resolution • $aspectRatio"
+        }
 
     companion object {
         const val MODE_TEXT2IMAGE = "text2image"
