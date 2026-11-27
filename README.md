@@ -16,8 +16,9 @@ Aplikasi Android untuk generate gambar pakai Venice Seedream, langsung nyambung 
    - Tab switch di atas kotak prompt: **Text2Image** (tetap seperti dulu) dan **Img2Img**
    - **Text2Image**: kotak input prompt + hitungan karakter, Resolusi (1K, 1.5K, 2K), Aspect Ratio, tombol **Generate**
    - **Img2Img**: pilih gambar referensi dari galeri HP — tampil preview lengkap dengan info ukuran, tombol **Ganti Gambar** dan **Hapus**. Gambar otomatis dikompresi di HP (sisi terpanjang maks 1024px, JPEG kualitas 85) sebelum dikirim. Prompt-nya berisi instruksi edit, contoh: "ganti langit jadi sunset". Tombol **Edit Gambar**. Resolusi (1K/1.5K/2K) dan Aspect Ratio (8 pilihan) bisa dipilih — rasio default otomatis ngikutin gambar referensi.
-   - Begitu generate/edit berhasil, kotak prompt langsung kosong (prompt-nya sudah ikut tersimpan di Galeri) dan aplikasi langsung pindah ke tab **Galeri** — Beranda sengaja dibiarkan kosong di bawah tombol, biar hasilnya nggak tampil dobel
-   - Pas lagi proses, tombol menampilkan timer detiknya
+   - **Tekan Generate, lalu lupakan**: begitu tombol ditekan, kotak prompt langsung kosong, aplikasi langsung pindah ke tab **Galeri**, dan prosesnya jalan sendiri di latar. Di Galeri muncul kartu *Sedang dibuat…* yang berubah jadi gambar kalau berhasil, atau jadi kartu gagal berisi pesan errornya kalau gagal — semua peringatan generate ada di Galeri, bukan di Beranda. Beranda memang tanpa gambar hasil, biar nggak dobel dan nggak rame
+   - Karena tidak ada proses yang mengunci Beranda, pengguna bisa balik dan generate lagi tanpa menunggu generate sebelumnya selesai — beberapa generate bisa jalan barengan, masing-masing kartunya sendiri di Galeri
+   - Tombol **Generate/Edit Gambar** menempel di bawah layar (di atas navbar), selalu terlihat tanpa scroll. Preview gambar referensi Img2Img dibatasi tingginya (maks 260dp) supaya prompt dan pilihan di bawahnya tidak terdorong jauh
 3. **Navbar bawah: Beranda | Galeri**:
    - Galeri grid 2 kolom, tiap kartu ada gambar + prompt + info (Text2Image: resolusi • ratio, Img2Img: "Img2Img • resolusi")
    - Klik kartu buat lihat besar: ada Download, Pakai Prompt Lagi, dan Hapus
@@ -110,7 +111,7 @@ app/src/main/java/com/golda/veniceseedream/
 │   ├── GalleryStore.kt      # Galeri lokal: PNG + index.json di filesDir/gallery/
 │   └── Downloader.kt        # Simpan ke Download/VeniceSeedream (MediaStore)
 └── ui/
-    ├── MainViewModel.kt     # State & logika generate/edit, timer, galeri
+    ├── MainViewModel.kt     # State & logika generate/edit latar, galeri
     ├── HomeScreen.kt        # Tab Text2Image/Img2Img, prompt, picker referensi, tombol Generate
     ├── GalleryScreen.kt     # Grid galeri + dialog detail
     ├── SettingsDrawer.kt    # Isi drawer Pengaturan API key

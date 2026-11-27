@@ -73,8 +73,13 @@ fun GalleryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val doneCount = viewModel.galleryItems.count { it.isDone }
+                val pendingCount = viewModel.galleryItems.count { it.isPending }
                 Text(
-                    "${viewModel.galleryItems.size} gambar",
+                    buildString {
+                        append("$doneCount gambar")
+                        if (pendingCount > 0) append(" • $pendingCount sedang dibuat…")
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -93,7 +98,7 @@ fun GalleryScreen(
                     GalleryCard(
                         item = item,
                         file = File(viewModel.galleryDir, item.fileName),
-                        onClick = { selected = item }
+                        onClick = { if (!item.isPending) selected = item }
                     )
                 }
             }
@@ -138,15 +143,54 @@ fun GalleryScreen(
 private fun GalleryCard(item: GalleryItem, file: File, onClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
         modifier = Modifier.clickable { onClick() }
     ) {
         Column {
-            LocalPngImage(
-                file = file,
-                contentDescription = item.prompt,
-                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                contentScale = ContentScale.Crop
-            )
+            when {
+                item.isPending -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                color = com.golda.veniceseedream.ui.theme.AccentYellow
+                            )
+                            Text(
+                                "Sedang dibuat…",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                item.isFailed -> {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f).padding(14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            item.error.ifBlank { "Generate gagal." },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 6,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                else -> {
+                    LocalPngImage(
+                        file = file,
+                        contentDescription = item.prompt,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
             Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     item.prompt,
@@ -180,41 +224,52 @@ private fun GalleryDetailDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Detail Gambar") },
+        title = { Text(if (item.isFailed) "Generate Gagal" else "Detail Gambar") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                LocalPngImage(
-                    file = file,
-                    contentDescription = item.prompt,
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f),
-                    contentScale = ContentScale.Fit
-                )
+                if (item.isDone) {
+                    LocalPngImage(
+                        file = file,
+                        contentDescription = item.prompt,
+                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                if (item.isFailed) {
+                    Text(
+                        item.error.ifBlank { "Generate gagal." },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 Text(item.prompt, style = MaterialTheme.typography.bodyMedium)
                 Text(
                     "${item.infoText} • $dateText",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedButton(
-                    onClick = {
-                        scope.launch {
-                            val ok = Downloader.saveToDownloads(context, file, item.fileName)
-                            Toast.makeText(
-                                context,
-                                if (ok) "Tersimpan di Download/VeniceSeedream"
-                                else "Gagal menyimpan gambar",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Download, contentDescription = null)
-                    Spacer(Modifier.size(6.dp))
-                    Text("Download")
+                if (item.isDone) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                val ok = Downloader.saveToDownloads(context, file, item.fileName)
+                                Toast.makeText(
+                                    context,
+                                    if (ok) "Tersimpan di Download/VeniceSeedream"
+                                    else "Gagal menyimpan gambar",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null)
+                        Spacer(Modifier.size(6.dp))
+                        Text("Download")
+                    }
                 }
                 OutlinedButton(onClick = onUsePrompt, modifier = Modifier.fillMaxWidth()) {
                     Text("Pakai Prompt Lagi")

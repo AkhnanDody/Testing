@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import java.io.File
 
 /** Dropdown tutup-buka / gulung untuk pilihan seperti resolusi & aspect ratio. */
@@ -41,6 +42,7 @@ fun LabeledDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text(label) },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
             modifier = Modifier
