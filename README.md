@@ -125,3 +125,7 @@ app/src/main/java/com/golda/veniceseedream/
 - API key cuma disimpan di HP dan cuma dikirim ke `api.venice.ai` pas generate. Jangan bagikan APK yang sudah kamu isi key-nya ke orang lain kalau key-nya mau tetap privat — sebenarnya key tidak ikut di APK, key tersimpan di data aplikasi di HP masing-masing.
 - Generate butuh internet dan credits Venice yang cukup.
 - Proyek ini belum dicoba build di mesin pembuatnya (tidak ada Android SDK di sana), jadi sync pertama di Android Studio kamu adalah uji build pertamanya. Kalau ada error merah pas sync, kirim screenshot/pesan error-nya biar bisa dibenerin.
+
+## Tes konektor GitHub
+
+Tes push via konektor GitHub Muse — 27 Nov 2026. Img2Img v1.1 sudah terverifikasi end-to-end di HP.
