@@ -91,17 +91,21 @@ object VeniceApi {
 
     /**
      * Image-to-image (edit): POST /image/edit
-     * Model default firered-image-edit ($0,04/edit).
+     * Model: seedream-v5-5-edit — varian edit dari Seedream 5.5 yang sama
+     * dengan text2image (bukan firered lagi). Keunggulannya: multi-turn
+     * editing yang menjaga bagian gambar yang tidak diedit tetap sama.
      * Gambar dikirim sebagai base64 (sudah dikompresi maks 1024px di client).
      * Beda dari /image/generate: responsnya GAMBAR MENTAH (binary),
      * bukan JSON base64 — jadi langsung baca bytes-nya.
-     * resolution cuma 1K/2K/4K; aspect ratio ngikutin gambar sumber.
+     * PENTING: jangan kirim `resolution`/`aspect_ratio` — model edit
+     * sebelumnya (firered-image-edit) langsung menolak resolution, dan
+     * belum terkonfirmasi apakah seedream-v5-5-edit menerimanya.
+     * Ukuran hasil ngikutin gambar referensi.
      */
     suspend fun editImage(
         apiKey: String,
         prompt: String,
-        imageBase64: String,
-        resolution: String
+        imageBase64: String
     ): ByteArray = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) {
             throw VeniceException("API key belum diisi. Buka menu hamburger > Pengaturan, lalu isi API key Venice kamu.")
@@ -114,10 +118,9 @@ object VeniceApi {
         }
 
         val payload = JSONObject().apply {
-            put("model", "firered-image-edit")
+            put("model", "seedream-v5-5-edit")
             put("image", imageBase64)
             put("prompt", prompt)
-            put("resolution", resolution)
             put("safe_mode", false)
         }
 

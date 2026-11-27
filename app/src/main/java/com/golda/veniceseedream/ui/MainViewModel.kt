@@ -39,8 +39,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var prompt by mutableStateOf("")
     var resolution by mutableStateOf(Options.RESOLUTIONS.first())
     var aspectRatio by mutableStateOf(Options.ASPECT_RATIOS.first())
-    /** Resolusi khusus img2img — endpoint /image/edit cuma terima tier 1K/2K/4K. */
-    var editResolution by mutableStateOf(Options.EDIT_RESOLUTIONS.first())
 
     /** Gambar referensi img2img, sudah dikompresi (maks 1024px) di client. */
     var referenceImage by mutableStateOf<ImageCompressor.CompressedImage?>(null)
@@ -148,12 +146,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val bytes = VeniceApi.editImage(
                         apiKey = apiKey.value,
                         prompt = currentPrompt,
-                        imageBase64 = referenceImage!!.base64,
-                        resolution = editResolution
+                        imageBase64 = referenceImage!!.base64
                     )
                     galleryStore.add(
                         prompt = currentPrompt,
-                        resolution = editResolution,
+                        resolution = referenceImage!!.dimensionsText,
                         aspectRatio = "",
                         pngBytes = bytes,
                         mode = GalleryItem.MODE_IMG2IMG

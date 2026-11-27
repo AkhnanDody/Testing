@@ -189,13 +189,11 @@ fun HomeScreen(
         )
 
         if (isImg2Img) {
-            // Edit ngikutin rasio gambar referensi, jadi cuma resolusi yang dipilih.
-            LabeledDropdown(
-                label = "Resolusi",
-                options = Options.EDIT_RESOLUTIONS,
-                selected = viewModel.editResolution,
-                onSelected = { viewModel.editResolution = it },
-                modifier = Modifier.fillMaxWidth()
+            // Edit ngikutin ukuran & rasio gambar referensi — nggak ada yang dipilih.
+            Text(
+                text = "Ukuran hasil ngikutin gambar referensi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

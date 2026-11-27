@@ -15,7 +15,7 @@ Aplikasi Android untuk generate gambar pakai Venice Seedream, langsung nyambung 
 2. **Layar utama (Beranda)**:
    - Tab switch di atas kotak prompt: **Text2Image** (tetap seperti dulu) dan **Img2Img**
    - **Text2Image**: kotak input prompt + hitungan karakter, Resolusi (1K, 1.5K, 2K), Aspect Ratio, tombol **Generate**
-   - **Img2Img**: pilih gambar referensi dari galeri HP — tampil preview lengkap dengan info ukuran, tombol **Ganti Gambar** dan **Hapus**. Gambar otomatis dikompresi di HP (sisi terpanjang maks 1024px, JPEG kualitas 85) sebelum dikirim. Prompt-nya berisi instruksi edit, contoh: "ganti langit jadi sunset". Tombol **Edit Gambar**, resolusi edit 1K/2K (rasio ngikutin gambar referensi)
+   - **Img2Img**: pilih gambar referensi dari galeri HP — tampil preview lengkap dengan info ukuran, tombol **Ganti Gambar** dan **Hapus**. Gambar otomatis dikompresi di HP (sisi terpanjang maks 1024px, JPEG kualitas 85) sebelum dikirim. Prompt-nya berisi instruksi edit, contoh: "ganti langit jadi sunset". Tombol **Edit Gambar**. Ukuran hasil ngikutin gambar referensi (model edit tidak terima parameter resolusi).
    - Begitu generate/edit berhasil, kotak prompt langsung kosong (prompt-nya sudah ikut tersimpan di Galeri) dan aplikasi langsung pindah ke tab **Galeri** — Beranda sengaja dibiarkan kosong di bawah tombol, biar hasilnya nggak tampil dobel
    - Pas lagi proses, tombol menampilkan timer detiknya
 3. **Navbar bawah: Beranda | Galeri**:
@@ -87,15 +87,14 @@ POST https://api.venice.ai/api/v1/image/edit
 Header: Authorization: Bearer <API key kamu>
 Body JSON:
 {
-  "model": "firered-image-edit",
+  "model": "seedream-v5-5-edit",
   "image": "<base64 gambar referensi, sudah dikompresi maks 1024px>",
   "prompt": "ganti langit jadi sunset",
-  "resolution": "1K",
   "safe_mode": false
 }
 ```
 
-Bedanya: response `/image/edit` adalah **gambar mentah (binary)**, bukan JSON base64 — jadi langsung dibaca bytes-nya. Harga edit $0,04 per edit (generate ~$0,03/gambar 1K, harga bisa berubah, cek venice.ai). Error 422 berarti Venice nolak gambar/prompt-nya.
+Bedanya: response `/image/edit` adalah **gambar mentah (binary)**, bukan JSON base64 — jadi langsung dibaca bytes-nya. Model editnya adalah `seedream-v5-5-edit`, varian edit dari Seedream 5.5 yang sama dengan text2image — keunggulannya multi-turn editing: bagian gambar yang tidak diedit tetap sama persis, jadi bisa edit berulang dari hasil edit sebelumnya. **Jangan kirim `resolution` atau `aspect_ratio`** — model edit sebelumnya (`firered-image-edit`) langsung menolak `resolution`, dan belum terkonfirmasi apakah `seedream-v5-5-edit` menerimanya; ukuran hasil ngikutin gambar referensi. Error 422 berarti Venice nolak gambar/prompt-nya.
 
 ## Struktur proyek (singkat)
 
